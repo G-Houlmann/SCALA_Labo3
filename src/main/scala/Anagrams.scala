@@ -1,3 +1,6 @@
+
+import scala.io.Source
+import scala.annotation.tailrec
 import scala.collection.immutable._
 
 
@@ -27,20 +30,20 @@ object Anagrams extends App {
   // You can begin your development with this simple example.
   // A dictionary of English words is given to you as an external file (linuxwords.txt)
   // that you must load to use with your program.
-  val dictionary: List[Word] =
-    List("ate", "eat", "tea", "pot", "top", "sonja", "jason", "normal",
-         "I", "love", "you", "olive")
+//  val dictionary: List[Word] =
+//    List("ate", "eat", "tea", "pot", "top", "sonja", "jason", "normal",
+//         "I", "love", "you", "olive")
 
+  val in = Source.fromFile("linuxwords.txt")
+  val dictionary = in.getLines.toList filter (word =>word.forall(ch=>ch.isLetter))
 
   /** Converts a word/sentence into its fingerprint.
    *  The fingerprint has the same characters as the word, with the same
    *  number of occurrences, but the characters appear in sorted order.
    */
 
-  def fingerPrint(s: Word): FingerPrint = s.sortWith(_<_)
-  def fingerPrint(s: Sentence): FingerPrint = {
-    fingerPrint(s.mkString)
-  }
+  def fingerPrint(s: Word): FingerPrint = s.sortWith(_<_).toLowerCase()
+  def fingerPrint(s: Sentence): FingerPrint = fingerPrint(s.mkString)
 
 
   /** `matchingWords` is a `Map` from fingerprints to a sequence of all
@@ -55,11 +58,17 @@ object Anagrams extends App {
    *   "aet"-> List("ate", "eat", "tea")
    */
 
-  val matchingWords: Map[FingerPrint, List[Word]] = ???
+  val matchingWords: Map[FingerPrint, List[Word]] =
+    dictionary.map(w => (fingerPrint(w), w))
+      .groupBy(x => x._1)
+      .map(x => (x._1, x._2.map(y => y._2)))
+      .withDefault(_ => Nil)
 
 
   /** Returns all the anagrams of a given word. */
-  def wordAnagrams(word: Word): List[Word] = ???
+  def wordAnagrams(word: Word): List[Word] = {
+    matchingWords(fingerPrint(word))
+  }
 
   // Test code with for example:
   // println(wordAnagrams("eta"))
@@ -81,8 +90,15 @@ object Anagrams extends App {
    *  You are not allowed to use the `combination` method from the Scala API.
    */
 
-  def subseqs(fp: FingerPrint): List[FingerPrint] = ???
-
+  def subseqs(fp: FingerPrint): List[FingerPrint] = {
+    def subseqs1(fp: FingerPrint, index: Int, current: FingerPrint) : List[FingerPrint] = {
+      index match {
+        case base if index == fp.length => List(current)
+        case _ => subseqs1(fp, index + 1, current.appended(fp(index))) ++ subseqs1(fp, index + 1, current)
+      }
+    }
+    subseqs1(fp, 0, "").distinct
+  }
 
   // Test code with for example:
   // println(subseqs("aabbc"))
@@ -97,7 +113,13 @@ object Anagrams extends App {
    *  You are not allowed to use the `diff` method from the Scala API.
    */
 
-  def subtract(x: FingerPrint, y: FingerPrint): FingerPrint = ???
+  @tailrec
+  def subtract(x: FingerPrint, y: FingerPrint): FingerPrint = {
+    y match {
+      case "" => x
+      case _ => subtract(x.replaceFirst(y.head.toString, ""), y.tail)
+    }
+  }
 
   // Test code with for example:
   // println(subtract("aabbcc", "abc"))
@@ -122,11 +144,42 @@ object Anagrams extends App {
    *  Note: There is only one anagram of an empty sentence.
    */
 
-  def sentenceAnagrams(sentence: Sentence): List[Sentence] = ???
+  def sentenceAnagrams(sentence: Sentence): List[Sentence] = {
+    def sentenceAnagrams1(sentenceFp: FingerPrint) : List[Sentence] = {
+      sentenceFp.length match {
+        case 0 => List(List())
+        case _ => for {
+          print <- subseqs(sentenceFp)
+          word <- wordAnagrams(print) //if dictionary.contains(word)
+          nextWords <- sentenceAnagrams1(subtract(sentenceFp, print))
+        } yield word :: nextWords
+
+      }
+    }
+    sentenceAnagrams1(fingerPrint(sentence))
+
+  }
+
+// TESTS
+
+//  println(fingerPrint(List("ate", "eat", "tea", "pot", "top", "sonja", "jason", "normal",
+//    "I", "love", "you", "olive")))
+//
+//  println(matchingWords)
+//
+//  println(wordAnagrams("eta"))
+//
+//  println(subseqs("abbc"))
+//
+//  println("aa".tail)
+//  println("a".tail == "")
+//
+//  println(subtract("aaabbbdddeeadfc", "abcdaa"))
 
   // Test code with for example:
-  // println(sentenceAnagrams(List("eat", "tea")))
-  // println(sentenceAnagrams(List("you", "olive")))
-  // println(sentenceAnagrams(List("I", "love", "you")))
+  println(sentenceAnagrams(List("eat", "tea")))
+  println(sentenceAnagrams(List("you", "olive")))
+  println(sentenceAnagrams(List("I", "love", "you")))
+  println(sentenceAnagrams(List("eat", "Elvis")))
 
 }
