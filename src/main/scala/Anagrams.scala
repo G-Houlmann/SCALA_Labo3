@@ -37,8 +37,10 @@ object Anagrams extends App {
    *  number of occurrences, but the characters appear in sorted order.
    */
 
-  def fingerPrint(s: Word): FingerPrint = ???
-  def fingerPrint(s: Sentence): FingerPrint = ???
+  def fingerPrint(s: Word): FingerPrint = s.sortWith(_<_)
+  def fingerPrint(s: Sentence): FingerPrint = {
+    fingerPrint(s.mkString)
+  }
 
 
   /** `matchingWords` is a `Map` from fingerprints to a sequence of all
